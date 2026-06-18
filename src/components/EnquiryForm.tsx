@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Logo from "./Logo";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "@/lib/supabase";
 
 interface FormData {
   name: string;
@@ -104,25 +103,30 @@ export default function EnquiryForm() {
         const cleanPhone = formData.phone.replace(/[\s\-()]/g, "");
         const formattedPhone = `+91 ${cleanPhone}`;
         
-        const { error } = await supabase
-          .from("franchise_enquiries")
-          .insert([
-            {
-              full_name: formData.name,
-              phone: formattedPhone,
-              email: formData.email,
-              city: formData.city,
-              preferred_model: formData.model,
-              budget_range: formData.budget,
-              message: formData.message,
-            },
-          ]);
+        const res = await fetch("/api/enquiry", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            phone: formattedPhone,
+            email: formData.email,
+            city: formData.city,
+            model: formData.model,
+            budget: formData.budget,
+            message: formData.message,
+          }),
+        });
 
-        if (error) throw error;
+        const responseData = await res.json();
+        if (!res.ok || responseData.error) {
+          throw new Error(responseData.error || "Something went wrong.");
+        }
         setIsSubmitted(true);
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        setSubmitError("Something went wrong. Please try again or call us directly.");
+        setSubmitError(err.message || "Something went wrong. Please try again or call us directly.");
       } finally {
         setIsSubmitting(false);
       }
@@ -364,10 +368,11 @@ export default function EnquiryForm() {
               </div>
 
               <h2 className="font-display text-3xl md:text-4xl font-bold text-[#E8401C] mb-4">
-                We've received your enquiry! ☕
+                🎉 Enquiry Submitted Successfully
               </h2>
               <p className="text-lg md:text-xl text-[#1A1A1A] font-semibold mb-8 max-w-md mx-auto leading-relaxed">
-                Our team will call you within 24 hours to guide you through the next steps of starting your Zé Chai franchise.
+                Thank you for your interest in Zé Chai Franchise.<br />
+                Our team has received your enquiry and will contact you within 24 hours.
               </p>
 
               {/* Summary details */}
@@ -395,7 +400,7 @@ export default function EnquiryForm() {
                 }}
                 className="bg-[#E8401C] hover:bg-[#cf3515] text-[#F2E8C4] font-display font-bold py-3.5 px-8 rounded-[8px] transition-all hover:scale-103 active:scale-95 shadow-[0_4px_12px_rgba(232,64,28,0.12)] cursor-pointer"
               >
-                Submit Another Enquiry
+                Close
               </button>
             </motion.div>
           )}
