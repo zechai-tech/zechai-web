@@ -353,33 +353,40 @@ export async function POST(request: Request) {
     // 5. Send emails simultaneously via Promise.all
     const [customerMail, adminMail] = await Promise.all([
       resend.emails.send({
-        from: "Zé Chai Franchise <onboarding@resend.dev>",
+        from: "Zé Chai Franchise <franchise@zechai.in>",
         to: email,
         subject: "✅ We’ve Received Your Franchise Enquiry | Zé Chai",
         html: customerHtml,
       }),
       resend.emails.send({
-        from: "Zé Chai System <onboarding@resend.dev>",
+        from: "Zé Chai System <noreply@zechai.in>",
         to: "zechai.official@gmail.com",
         subject: "🚀 New Franchise Enquiry Received",
         html: adminHtml,
       }),
     ]);
 
-    // 6. Check for sending errors
+    // 6. Log the complete Resend API responses
+    console.log("Resend Customer Mail Response:", JSON.stringify(customerMail, null, 2));
+    console.log("Resend Admin Mail Response:", JSON.stringify(adminMail, null, 2));
+
+    // 7. Check for sending errors and return actual details
     if (customerMail.error || adminMail.error) {
       console.error("Resend Sending Error(s):", {
         customerMailError: customerMail.error,
         adminMailError: adminMail.error,
       });
+
+      const errMessages: string[] = [];
+      if (customerMail.error) {
+        errMessages.push(`Customer Mail: [${customerMail.error.name}] ${customerMail.error.message}`);
+      }
+      if (adminMail.error) {
+        errMessages.push(`Admin Mail: [${adminMail.error.name}] ${adminMail.error.message}`);
+      }
+      
       return NextResponse.json(
-        {
-          error: "Failed to dispatch notification emails.",
-          details: {
-            customerMail: customerMail.error,
-            adminMail: adminMail.error,
-          },
-        },
+        { error: `Failed to dispatch notification emails: ${errMessages.join(" | ")}` },
         { status: 502 }
       );
     }
@@ -388,7 +395,7 @@ export async function POST(request: Request) {
   } catch (err: any) {
     console.error("API Enquiry Route Exception:", err);
     return NextResponse.json(
-      { error: "Internal Server Error." },
+      { error: `Internal Server Error: ${err.message || err}` },
       { status: 500 }
     );
   }
