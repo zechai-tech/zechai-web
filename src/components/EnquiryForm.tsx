@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Logo from "./Logo";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
 
 interface FormData {
   name: string;
@@ -37,6 +38,7 @@ export default function EnquiryForm() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const validate = () => {
     const newErrors: FormErrors = {};
@@ -93,15 +95,37 @@ export default function EnquiryForm() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
     if (validate()) {
       setIsSubmitting(true);
-      // Simulate API submission
-      setTimeout(() => {
-        setIsSubmitting(false);
+      try {
+        const cleanPhone = formData.phone.replace(/[\s\-()]/g, "");
+        const formattedPhone = `+91 ${cleanPhone}`;
+        
+        const { error } = await supabase
+          .from("franchise_enquiries")
+          .insert([
+            {
+              full_name: formData.name,
+              phone: formattedPhone,
+              email: formData.email,
+              city: formData.city,
+              preferred_model: formData.model,
+              budget_range: formData.budget,
+              message: formData.message,
+            },
+          ]);
+
+        if (error) throw error;
         setIsSubmitted(true);
-      }, 1000);
+      } catch (err) {
+        console.error(err);
+        setSubmitError("Something went wrong. Please try again or call us directly.");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -289,6 +313,13 @@ export default function EnquiryForm() {
                     placeholder="Tell us about your proposed site location or business background..."
                   />
                 </div>
+
+                {/* Submit Error */}
+                {submitError && (
+                  <div className="bg-red-50 border border-red-500/20 text-red-600 font-bold px-4 py-3 rounded-[10px] text-sm text-center">
+                    {submitError}
+                  </div>
+                )}
 
                 {/* Submit button */}
                 <button
